@@ -39,6 +39,7 @@ import (
 	bootstrapv1 "sigs.k8s.io/cluster-api/api/bootstrap/kubeadm/v1beta2"
 	controlplanev1 "sigs.k8s.io/cluster-api/api/controlplane/kubeadm/v1beta2"
 	clusterv1 "sigs.k8s.io/cluster-api/api/core/v1beta2"
+	"sigs.k8s.io/cluster-api/feature"
 	topologynames "sigs.k8s.io/cluster-api/internal/topology/names"
 	"sigs.k8s.io/cluster-api/util/container"
 	"sigs.k8s.io/cluster-api/util/secret"
@@ -373,14 +374,19 @@ func validateRolloutAndCertValidityFields(rolloutSpec controlplanev1.KubeadmCont
 	if rolloutStrategy.RollingUpdate.MaxSurge != nil {
 		ios1 := intstr.FromInt32(1)
 		ios0 := intstr.FromInt32(0)
+		// When maxSurge=0 with replicas < 3, in-place updates are required.
+		// If InPlaceUpdates feature gate is not enabled, fall back to original validation
+		// requiring at least 3 replicas for scale-in rollout strategy.
 		if rolloutStrategy.RollingUpdate.MaxSurge.IntValue() == ios0.IntValue() && (replicas != nil && *replicas < int32(3)) {
-			allErrs = append(
-				allErrs,
-				field.Required(
-					pathPrefix.Child("rollout", "strategy", "rollingUpdate"),
-					"when KubeadmControlPlane is configured to scale-in, replica count needs to be at least 3",
-				),
-			)
+			if !feature.Gates.Enabled(feature.InPlaceUpdates) {
+				allErrs = append(
+					allErrs,
+					field.Required(
+						pathPrefix.Child("rollout", "strategy", "rollingUpdate"),
+						"when KubeadmControlPlane is configured to scale-in (maxSurge=0), replica count needs to be at least 3, or enable the InPlaceUpdates feature gate",
+					),
+				)
+			}
 		}
 		if rolloutStrategy.RollingUpdate.MaxSurge.IntValue() != ios1.IntValue() && rolloutStrategy.RollingUpdate.MaxSurge.IntValue() != ios0.IntValue() {
 			allErrs = append(

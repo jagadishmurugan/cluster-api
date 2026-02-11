@@ -760,11 +760,12 @@ func TestKubeadmControlPlaneValidateUpdate(t *testing.T) {
 	validEncryptionAlgorithm.Spec.KubeadmConfigSpec.ClusterConfiguration.EncryptionAlgorithm = bootstrapv1.EncryptionAlgorithmRSA3072
 
 	tests := []struct {
-		name                  string
-		enableIgnitionFeature bool
-		expectErr             bool
-		before                *controlplanev1.KubeadmControlPlane
-		kcp                   *controlplanev1.KubeadmControlPlane
+		name                       string
+		enableIgnitionFeature      bool
+		enableInPlaceUpdateFeature bool
+		expectErr                  bool
+		before                     *controlplanev1.KubeadmControlPlane
+		kcp                        *controlplanev1.KubeadmControlPlane
 	}{
 		{
 			name:      "should succeed when given a valid config",
@@ -1011,7 +1012,14 @@ func TestKubeadmControlPlaneValidateUpdate(t *testing.T) {
 			kcp:       updateMaxSurgeVal,
 		},
 		{
-			name:      "should return an error when maxSurge value is updated to 0, but replica count is < 3",
+			name:                      "should not return an error when maxSurge value is updated to 0 with replica count < 3 when InPlaceUpdates feature gate is enabled",
+			expectErr:                 false,
+			enableInPlaceUpdateFeature: true,
+			before:                    before,
+			kcp:                       wrongReplicaCountForScaleIn,
+		},
+		{
+			name:      "should return an error when maxSurge value is updated to 0 with replica count < 3 when InPlaceUpdates feature gate is disabled",
 			expectErr: true,
 			before:    before,
 			kcp:       wrongReplicaCountForScaleIn,
@@ -1135,6 +1143,11 @@ func TestKubeadmControlPlaneValidateUpdate(t *testing.T) {
 				// NOTE: KubeadmBootstrapFormatIgnition feature flag is disabled by default.
 				// Enabling the feature flag temporarily for this test.
 				utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.KubeadmBootstrapFormatIgnition, true)
+			}
+			if tt.enableInPlaceUpdateFeature {
+				// NOTE: InPlaceUpdates feature flag is disabled by default.
+				// Enabling the feature flag temporarily for this test.
+				utilfeature.SetFeatureGateDuringTest(t, feature.Gates, feature.InPlaceUpdates, true)
 			}
 
 			g := NewWithT(t)
