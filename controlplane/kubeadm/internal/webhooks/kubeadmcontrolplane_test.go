@@ -1012,11 +1012,11 @@ func TestKubeadmControlPlaneValidateUpdate(t *testing.T) {
 			kcp:       updateMaxSurgeVal,
 		},
 		{
-			name:                      "should not return an error when maxSurge value is updated to 0 with replica count < 3 when InPlaceUpdates feature gate is enabled",
-			expectErr:                 false,
+			name:                       "should not return an error when maxSurge value is updated to 0 with replica count < 3 when InPlaceUpdates feature gate is enabled",
+			expectErr:                  false,
 			enableInPlaceUpdateFeature: true,
-			before:                    before,
-			kcp:                       wrongReplicaCountForScaleIn,
+			before:                     before,
+			kcp:                        wrongReplicaCountForScaleIn,
 		},
 		{
 			name:      "should return an error when maxSurge value is updated to 0 with replica count < 3 when InPlaceUpdates feature gate is disabled",
